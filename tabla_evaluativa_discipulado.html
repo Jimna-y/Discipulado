@@ -239,6 +239,10 @@
   </style>
 </head>
 <body>
+  <!-- Mensaje de modo de solo lectura (se mostrará dinámicamente si la URL contiene ?mode=view) -->
+  <div id="readOnlyNotice" style="display:none;padding:0.8rem 1rem;margin-bottom:1rem;border:1px solid var(--gray);background: var(--cream);border-radius:8px;color: var(--eden);font-weight:500;text-align:center;">
+    Modo visualización: los datos son de solo lectura.
+  </div>
   <h1>Sistema de Evaluación – Discipulado de Alabanza</h1>
   <p class="instructions">
     Cada clase se evalúa sobre 20&nbsp;puntos distribuidos en cinco indicadores: Asistencia, Puntualidad,
@@ -272,6 +276,17 @@
   <!-- Dependencia para gráficos -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
+    // Detect if running on GitHub Pages (remote)
+    const isRemote = window.location.hostname.endsWith('.github.io');
+
+    // Parse URL parameters for mode. Use ?mode=view to forzar modo solo lectura o ?mode=edit para editar aunque sea remoto.
+    const urlParams = new URLSearchParams(window.location.search);
+    const modeParam = urlParams.get('mode');
+    const readOnlyParam = modeParam === 'view';
+    const editParam = modeParam === 'edit';
+    // Determinar si la página debe estar en modo de solo lectura
+    const readOnly = readOnlyParam || (isRemote && !editParam);
+
     // Sesiones con información detallada. Tomadas del documento de discipulado.
     const sessions = [
       {
@@ -609,6 +624,39 @@
       });
     }
 
+    // Cargar datos compartidos desde un archivo JSON en modo lectura. Este archivo
+    // debe llamarse "evaluacion_data.json" y estar en el mismo directorio que el HTML.
+    function loadSharedData() {
+      // Ruta al archivo JSON; si se usa GitHub Pages, el path relativo apunta al mismo directorio.
+      const dataUrl = 'evaluacion_data.json';
+      fetch(dataUrl)
+        .then(res => {
+          if (!res.ok) throw new Error('No hay datos remotos');
+          return res.json();
+        })
+        .then(data => {
+          // Cargar cada clave en localStorage para reutilizar las funciones existentes
+          Object.keys(data).forEach(key => {
+            localStorage.setItem(key, data[key]);
+          });
+          refreshSelects();
+          updateStatsSection();
+          updateGlobalChart();
+          // Deshabilitar inputs para evitar edición
+          document.querySelectorAll('select, input[type="text"]').forEach(el => {
+            el.disabled = true;
+          });
+          // Ocultar botones de importación/exportación si aún existen
+          const btnExport = document.getElementById('exportBtn');
+          if (btnExport) btnExport.style.display = 'none';
+          const importLabel = document.querySelector('label[for="importFile"]');
+          if (importLabel) importLabel.style.display = 'none';
+        })
+        .catch(err => {
+          console.warn('No se pudo cargar evaluacion_data.json:', err);
+        });
+    }
+
     // Construye la lista de alumnos para las estadísticas
     function populateStudentSelect() {
       const sel = document.getElementById('studentSelect');
@@ -797,6 +845,13 @@
       });
     }
 
+    // Deshabilita todos los selects e inputs en la página (utilizado en modo lectura)
+    function disableInputs() {
+      document.querySelectorAll('select, input[type="text"]').forEach(el => {
+        el.disabled = true;
+      });
+    }
+
     // Inicializar la página: generar sesiones, poblar select y enlazar botones
     function init() {
       renderSessions();
@@ -806,6 +861,19 @@
       updateStatsSection();
       // Cargar gráfico global inicialmente
       updateGlobalChart();
+      // Si estamos en modo de solo lectura, cargar datos compartidos y desactivar inputs
+      if (readOnly) {
+        // Mostrar aviso de solo lectura
+        const notice = document.getElementById('readOnlyNotice');
+        if (notice) notice.style.display = 'block';
+        // Ocultar barra de botones de edición si existe
+        const bar = document.querySelector('.button-bar');
+        if (bar) bar.style.display = 'none';
+        // Deshabilitar todos los campos de entrada inmediatamente
+        disableInputs();
+        // Cargar datos compartidos desde JSON
+        loadSharedData();
+      }
     }
     window.addEventListener('DOMContentLoaded', init);
   </script>

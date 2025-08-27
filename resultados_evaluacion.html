@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resultados de Evaluación – Discipulado de Alabanza</title>
+  <!--
+    Este archivo presenta una vista de solo lectura de las evaluaciones
+    acumuladas para el discipulado de alabanza. Carga los datos desde
+    "evaluacion_data.json" (generado en la página de edición) y muestra
+    estadísticas globales e individuales. Los participantes pueden ver
+    su desempeño sin opción de modificar la información.
+  -->
+  <style>
+    /* Tipografía y esquema de colores consistentes con la página de edición */
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
+    :root {
+      --bondi-blue: #0799b6;
+      --san-marino: #4a6eb0;
+      --eden: #114c5f;
+      --sinbad: #9cd2d3;
+      --janna: #f2e0cf;
+      --gray-light: #f5f6fa;
+      --gray: #e0e3e8;
+      --cream: #fafafa;
+      --text-primary: #2c3e50;
+      --text-secondary: #6b7280;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Poppins', Arial, sans-serif;
+      background: var(--gray-light);
+      color: var(--text-primary);
+      line-height: 1.6;
+      padding: 1rem;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 0.5rem;
+      color: var(--eden);
+      font-weight: 600;
+    }
+    h2, h3 {
+      margin-top: 2rem;
+      margin-bottom: 1rem;
+      color: var(--eden);
+      font-weight: 500;
+      text-align: center;
+    }
+    p.description {
+      text-align: center;
+      max-width: 900px;
+      margin: 0 auto 2rem auto;
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+    }
+    #results-container {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .chart-card {
+      background: var(--cream);
+      border: 1px solid var(--gray);
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      padding: 1rem;
+    }
+    .chart-card h3 {
+      margin-bottom: 1rem;
+      color: var(--eden);
+      font-size: 1.1rem;
+      font-weight: 600;
+      text-align: left;
+    }
+    .stats-summary {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+    .stats-summary p { margin-bottom: 0.4rem; }
+    .stats-summary ul { margin-left: 1rem; margin-bottom: 0.4rem; }
+    .stats-summary li { list-style: disc; margin-left: 1rem; margin-bottom: 0.2rem; }
+    select {
+      padding: 0.4rem;
+      border: 1px solid var(--gray);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      outline: none;
+      width: 100%;
+      margin-top: 0.5rem;
+      color: var(--text-primary);
+    }
+    @media (min-width: 600px) {
+      #results-container { flex-direction: column; }
+      select { max-width: 300px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Resultados de Evaluación – Discipulado de Alabanza</h1>
+  <p class="description">Esta página muestra el desempeño acumulado de los alumnos. Los datos son de solo lectura y se cargan automáticamente del archivo <code>evaluacion_data.json</code> ubicado en el mismo directorio.</p>
+  <div id="results-container">
+    <!-- Gráfico global de total de puntos por alumno -->
+    <div class="chart-card">
+      <h3>Desempeño global por alumno</h3>
+      <canvas id="globalResultsChart" style="max-width:100%;max-height:350px;"></canvas>
+    </div>
+    <!-- Estadísticas individuales -->
+    <div class="chart-card">
+      <h3>Estadísticas individuales</h3>
+      <label for="studentSelector">Selecciona alumno:</label>
+      <select id="studentSelector"></select>
+      <canvas id="studentResultsChart" style="max-width:100%;max-height:350px;"></canvas>
+      <div id="studentResultsSummary" class="stats-summary"></div>
+    </div>
+  </div>
+  <!-- Dependencia de gráficos -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // Número de sesiones y alumnos definidos según el plan (12 sesiones, 12 alumnos)
+    const numSessions = 12;
+    const students = Array.from({length: 12}, (_, i) => i + 1);
+    const categories = [
+      { key: 'asistencia', label: 'Asistencia' },
+      { key: 'puntualidad', label: 'Puntualidad' },
+      { key: 'participacion', label: 'Participación' },
+      { key: 'compromiso', label: 'Compromiso' },
+      { key: 'tarea', label: 'Tarea/Responsabilidad' }
+    ];
+
+    // Almacén en memoria de los datos cargados
+    let evalData = {};
+    // Gráficos Chart.js
+    let globalResultsChart;
+    let studentResultsChart;
+
+    // Cargar los datos del archivo JSON
+    function loadData() {
+      fetch('evaluacion_data.json')
+        .then(res => {
+          if (!res.ok) throw new Error('No se pudo cargar evaluacion_data.json');
+          return res.json();
+        })
+        .then(data => {
+          evalData = data;
+          populateStudentSelector();
+          updateGlobalResultsChart();
+        })
+        .catch(err => {
+          console.error(err);
+          document.getElementById('results-container').innerHTML = '<p>Error al cargar los datos de evaluación. Asegúrate de que el archivo evaluacion_data.json exista y sea accesible.</p>';
+        });
+    }
+
+    // Rellenar el selector de alumnos
+    function populateStudentSelector() {
+      const selector = document.getElementById('studentSelector');
+      // Opción predeterminada
+      const defaultOption = document.createElement('option');
+      defaultOption.value = '';
+      defaultOption.textContent = 'Seleccionar alumno…';
+      selector.appendChild(defaultOption);
+      students.forEach(id => {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = `Alumno ${id}`;
+        selector.appendChild(opt);
+      });
+      selector.addEventListener('change', updateStudentResults);
+    }
+
+    // Calcular estadísticas por alumno usando los datos cargados
+    function calculateStudentStats(studentId) {
+      const stats = {
+        totals: { asistencia: 0, puntualidad: 0, participacion: 0, compromiso: 0, tarea: 0 },
+        counts: { asistencia0: 0, asistencia1: 0, punctualityLate: 0 },
+        sessionsCompleted: 0
+      };
+      for (let s = 1; s <= numSessions; s++) {
+        let sessionHasData = false;
+        categories.forEach(cat => {
+          const key = `s${s}_p${studentId}_${cat.key}`;
+          const valueStr = evalData[key];
+          const value = valueStr ? parseInt(valueStr) : 0;
+          if (valueStr && valueStr !== '') {
+            sessionHasData = true;
+          }
+          stats.totals[cat.key] += value;
+          // Conteo de faltas y llegadas tarde
+          if (cat.key === 'asistencia') {
+            if (value === 0) stats.counts.asistencia0++;
+            if (value === 1) stats.counts.asistencia1++;
+          }
+          if (cat.key === 'puntualidad' && value < 4) {
+            stats.counts.punctualityLate++;
+          }
+        });
+        if (sessionHasData) stats.sessionsCompleted++;
+      }
+      return stats;
+    }
+
+    // Actualizar el gráfico global
+    function updateGlobalResultsChart() {
+      // Calcular el total de puntos por alumno
+      const totals = students.map(studentId => {
+        let total = 0;
+        for (let s = 1; s <= numSessions; s++) {
+          categories.forEach(cat => {
+            const key = `s${s}_p${studentId}_${cat.key}`;
+            const valStr = evalData[key];
+            const val = valStr ? parseInt(valStr) : 0;
+            total += val;
+          });
+        }
+        return total;
+      });
+      // Configurar colores alternados basados en la paleta
+      const baseColors = ['#0799b6','#4a6eb0','#114c5f','#9cd2d3','#f2e0cf'];
+      const barColors = totals.map((_, idx) => baseColors[idx % baseColors.length]);
+      const ctx = document.getElementById('globalResultsChart').getContext('2d');
+      if (globalResultsChart) globalResultsChart.destroy();
+      globalResultsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: students.map(id => `Alumno ${id}`),
+          datasets: [{
+            label: 'Total de puntos',
+            data: totals,
+            backgroundColor: barColors,
+            borderColor: barColors,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: numSessions * 20,
+              title: { display: true, text: 'Puntos acumulados' }
+            },
+            x: { title: { display: true, text: 'Alumnos' } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return ` ${context.parsed.y} pts`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Actualizar estadísticas y gráfico individuales cuando se selecciona un alumno
+    function updateStudentResults() {
+      const studentId = document.getElementById('studentSelector').value;
+      const summaryEl = document.getElementById('studentResultsSummary');
+      if (!studentId) {
+        summaryEl.textContent = 'Selecciona un alumno para ver sus estadísticas.';
+        if (studentResultsChart) studentResultsChart.destroy();
+        return;
+      }
+      const stats = calculateStudentStats(studentId);
+      // Calcular promedios por indicador
+      const averages = {};
+      let totalPoints = 0;
+      categories.forEach(cat => {
+        averages[cat.key] = stats.totals[cat.key] / numSessions;
+        totalPoints += stats.totals[cat.key];
+      });
+      const totalPossible = numSessions * 20;
+      const percent = ((totalPoints / totalPossible) * 100).toFixed(1);
+      // Resumen textual
+      summaryEl.innerHTML =
+        `<p><strong>Promedio por indicador (sobre 4):</strong></p>` +
+        `<ul>` +
+        `<li>Asistencia: ${averages.asistencia.toFixed(2)}</li>` +
+        `<li>Puntualidad: ${averages.puntualidad.toFixed(2)}</li>` +
+        `<li>Participación: ${averages.participacion.toFixed(2)}</li>` +
+        `<li>Compromiso: ${averages.compromiso.toFixed(2)}</li>` +
+        `<li>Tarea/Responsabilidad: ${averages.tarea.toFixed(2)}</li>` +
+        `</ul>` +
+        `<p><strong>Totales:</strong> ${totalPoints} de ${totalPossible} puntos (${percent}%).</p>` +
+        `<p><strong>Faltas (no asistió):</strong> ${stats.counts.asistencia0}</p>` +
+        `<p><strong>Ausencias parciales (medio presente):</strong> ${stats.counts.asistencia1}</p>` +
+        `<p><strong>Llegadas tarde/no llegó:</strong> ${stats.counts.punctualityLate}</p>`;
+      // Preparar datos para el gráfico individual
+      const labels = categories.map(c => c.label);
+      const dataVals = categories.map(c => averages[c.key]);
+      const ctx = document.getElementById('studentResultsChart').getContext('2d');
+      if (studentResultsChart) studentResultsChart.destroy();
+      const chartColors = ['#0799b6','#4a6eb0','#114c5f','#9cd2d3','#f2e0cf'];
+      studentResultsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: `Promedio de Alumno ${studentId}`,
+            data: dataVals,
+            backgroundColor: chartColors,
+            borderColor: chartColors,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 4,
+              ticks: { stepSize: 1 },
+              title: { display: true, text: 'Promedio (0–4)' }
+            },
+            x: { title: { display: true, text: 'Indicadores' } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return ` ${context.parsed.y.toFixed(2)}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Cargar datos al inicializar
+    window.addEventListener('DOMContentLoaded', loadData);
+  </script>
+</body>
+</html>
