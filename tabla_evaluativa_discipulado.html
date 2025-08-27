@@ -3,142 +3,203 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Tabla Evaluativa – Discipulado de Alabanza y Adoración</title>
+  <title>Evaluación Discipulado – Alabanza y Adoración</title>
+  <!--
+    Esta página HTML implementa un sistema integral de seguimiento y evaluación
+    para un discipulado de alabanza y adoración. Cada clase se valora sobre
+    20 puntos distribuidos en cinco indicadores: Asistencia, Puntualidad,
+    Participación, Compromiso y Tarea/Responsabilidad. Las opciones de
+    evaluación reflejan las escalas especificadas (4, 3, 2, 1, 0), y se
+    almacenan en localStorage para persistencia del lado del cliente.
+
+    Además de la matriz de evaluación por sesión y alumno, la página cuenta
+    con un panel de estadísticas que permite seleccionar a un alumno y
+    visualizar un resumen de su desempeño promedio por indicador, junto con
+    métricas clave (faltas y llegadas tarde). Para la visualización se
+    incorpora Chart.js desde CDN.
+  -->
   <style>
-    /* General layout */
+    /* Reset básico y tipografía */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: Arial, Helvetica, sans-serif;
-      background: #f4f7f9;
-      margin: 0;
-      padding: 1rem;
+      background: #f7f9fc;
       color: #333;
+      line-height: 1.5;
+      padding: 1rem;
     }
 
     h1 {
       text-align: center;
+      margin-bottom: 0.25rem;
       color: #2c3e50;
-      margin-bottom: 0.5rem;
     }
-
+    h2 {
+      margin-top: 2rem;
+      margin-bottom: 1rem;
+      color: #2c3e50;
+    }
     p.instructions {
       text-align: center;
-      max-width: 800px;
-      margin: 0 auto 2rem auto;
-      font-size: 0.95rem;
+      max-width: 900px;
+      margin: 0 auto 1.5rem auto;
+      font-size: 0.9rem;
       color: #555;
     }
 
+    /* Barra de botones */
     .button-bar {
       display: flex;
+      flex-wrap: wrap;
       justify-content: center;
       gap: 1rem;
       margin-bottom: 1.5rem;
     }
-
-    .button-bar button {
-      padding: 0.5rem 1rem;
+    .button-bar button, .button-bar label span {
       background-color: #3498db;
       color: #fff;
       border: none;
       border-radius: 4px;
+      padding: 0.5rem 1rem;
       cursor: pointer;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       transition: background-color 0.2s ease-in-out;
     }
-
-    .button-bar button:hover {
+    .button-bar button:hover, .button-bar label span:hover {
       background-color: #2980b9;
     }
-
-    details.session {
-      background: #ffffff;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      margin-bottom: 1rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    /* Contenedor de sesiones en formato tarjetas */
+    #sessions-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
     }
-
-    details.session summary {
-      list-style: none;
-      cursor: pointer;
+    .session-card {
+      background: #fff;
+      border: 1px solid #e1e8f0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .session-header {
+      background-color: #ecf8ff;
       padding: 0.75rem 1rem;
       font-weight: bold;
-      background-color: #ecf8ff;
-      border-radius: 6px 6px 0 0;
-      position: relative;
+      cursor: pointer;
     }
-
-    details.session summary::marker {
-      display: none;
-    }
-
-    details.session[open] summary {
-      border-bottom: 1px solid #ddd;
-    }
-
-    .session-details {
+    .session-body {
       padding: 0.75rem 1rem 1rem 1rem;
-      font-size: 0.9rem;
-      line-height: 1.4;
+      display: none;
+      flex-direction: column;
+      font-size: 0.85rem;
+      line-height: 1.3;
     }
-
-    .session-details p {
-      margin: 0.3rem 0;
+    .session-body p { margin: 0.2rem 0; }
+    .session-body strong { color: #2c3e50; }
+    .toggle-icon {
+      float: right;
+      transition: transform 0.2s;
     }
-
-    .session-details strong {
-      color: #2c3e50;
+    .session-card.open .toggle-icon {
+      transform: rotate(90deg);
     }
-
+    .session-card.open .session-body {
+      display: flex;
+    }
+    /* Tabla de evaluación dentro de cada tarjeta */
     table.evaluation-table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 0.5rem;
     }
-
     table.evaluation-table th, table.evaluation-table td {
       border: 1px solid #ddd;
-      padding: 0.4rem;
+      padding: 0.35rem;
       text-align: left;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
     }
-
     table.evaluation-table th {
-      background-color: #f0f4f6;
+      background-color: #f5f8fb;
       font-weight: bold;
     }
-
     table.evaluation-table select, table.evaluation-table input[type="text"] {
       width: 100%;
-      padding: 0.25rem;
-      font-size: 0.85rem;
+      padding: 0.2rem;
+      font-size: 0.8rem;
       border: 1px solid #ccc;
       border-radius: 3px;
-      box-sizing: border-box;
     }
-
     table.evaluation-table input[type="text"] {
       font-style: italic;
+    }
+
+    /* Sección de estadísticas */
+    #stats-section {
+      margin-top: 2rem;
+      background: #fff;
+      border: 1px solid #e1e8f0;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    #stats-section label {
+      margin-right: 0.5rem;
+      font-weight: bold;
+    }
+    #stats-summary {
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+    /* Responsive adaptaciones */
+    @media (max-width: 600px) {
+      table.evaluation-table th, table.evaluation-table td {
+        font-size: 0.7rem;
+        padding: 0.25rem;
+      }
+      .button-bar button, .button-bar label span {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.8rem;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>Tabla Evaluativa – Discipulado de Alabanza y Adoración</h1>
+  <h1>Sistema de Evaluación – Discipulado de Alabanza</h1>
   <p class="instructions">
-    Utiliza esta tabla para evaluar cada sesión del discipulado. Haz clic en la cabecera de cada sesión para desplegar u ocultar su contenido. Los cambios se guardan automáticamente en tu navegador. Puedes exportar tus datos a un archivo JSON o importarlos desde un archivo previamente guardado.
+    Cada clase se evalúa sobre 20&nbsp;puntos distribuidos en cinco indicadores: Asistencia, Puntualidad,
+    Participación, Compromiso y Tarea/Responsabilidad. Selecciona la puntuación correspondiente
+    para cada alumno en cada clase. Los datos se guardan automáticamente en tu navegador.
+    Puedes exportar un respaldo en formato JSON o importar datos previamente guardados.
   </p>
   <div class="button-bar">
-    <button id="exportBtn">Exportar Datos</button>
+    <button id="exportBtn">Exportar datos</button>
     <label for="importFile" style="position: relative; overflow: hidden;">
-      <input type="file" id="importFile" accept="application/json" style="position:absolute;left:0;top:0;opacity:0;width:100%;height:100%;cursor:pointer;">
-      <span style="display:inline-block;padding:0.5rem 1rem;">Importar Datos</span>
+      <input type="file" id="importFile" accept="application/json" style="position:absolute;left:0;top:0;opacity:0;width:100%;height:100%;cursor:pointer;"/>
+      <span>Importar datos</span>
     </label>
   </div>
   <div id="sessions-container"></div>
 
+  <h2>Estadísticas por alumno</h2>
+  <div id="stats-section">
+    <div>
+      <label for="studentSelect">Selecciona alumno:</label>
+      <select id="studentSelect"></select>
+    </div>
+    <canvas id="studentChart" style="max-width:100%;max-height:350px;"></canvas>
+    <div id="stats-summary"></div>
+  </div>
+
+  <!-- Dependencia para gráficos -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    /* Datos de las sesiones extraídos del documento de discipulado.
-       Cada sesión contiene información esencial para orientar la evaluación y tareas asociadas. */
+    // Sesiones con información detallada. Tomadas del documento de discipulado.
     const sessions = [
       {
         id: 1,
@@ -262,60 +323,103 @@
       }
     ];
 
-    // Crea un arreglo de participantes numerados del 1 al 12
-    const participants = Array.from({ length: 12 }, (_, i) => i + 1);
+    // Lista de alumnos enumerados.
+    const students = Array.from({ length: 12 }, (_, i) => i + 1);
 
-    // Categorías de evaluación y sus opciones
+    /*
+     * Definición de categorías de evaluación. Cada categoría especifica su clave,
+     * nombre visible y un conjunto de opciones. Cada opción tiene el valor
+     * numérico (para calcular promedios) y un texto descriptivo que se
+     * mostrará en el desplegable. La primera opción vacía permite que se
+     * deje la celda sin evaluar.
+     */
     const categories = [
       {
         key: 'asistencia',
         label: 'Asistencia',
-        options: ['', 'Sí', 'No']
+        options: [
+          { value: '', text: 'Seleccionar…' },
+          { value: '4', text: '4 – Asistió completo' },
+          { value: '3', text: '3 – Ausente una parte' },
+          { value: '1', text: '1 – Medio presente' },
+          { value: '0', text: '0 – No asistió' }
+        ]
+      },
+      {
+        key: 'puntualidad',
+        label: 'Puntualidad',
+        options: [
+          { value: '', text: 'Seleccionar…' },
+          { value: '4', text: '4 – Puntual' },
+          { value: '2', text: '2 – Un poco tarde' },
+          { value: '1', text: '1 – Muy tarde' },
+          { value: '0', text: '0 – No llegó' }
+        ]
       },
       {
         key: 'participacion',
         label: 'Participación',
-        options: ['', 'Excelente', 'Buena', 'Regular', 'Baja']
-      },
-      {
-        key: 'comprension',
-        label: 'Comprensión',
-        options: ['', 'Excelente', 'Buena', 'Regular', 'Baja']
+        options: [
+          { value: '', text: 'Seleccionar…' },
+          { value: '4', text: '4 – Participó en toda la sesión' },
+          { value: '2', text: '2 – Participó varias veces' },
+          { value: '1', text: '1 – Participación mínima' },
+          { value: '0', text: '0 – No participó' }
+        ]
       },
       {
         key: 'compromiso',
         label: 'Compromiso',
-        options: ['', 'Comprometido', 'Poco comprometido', 'No comprometido']
+        options: [
+          { value: '', text: 'Seleccionar…' },
+          { value: '4', text: '4 – Compromiso claro' },
+          { value: '2', text: '2 – Compromiso intermedio' },
+          { value: '1', text: '1 – Compromiso mínimo' },
+          { value: '0', text: '0 – Nulo' }
+        ]
+      },
+      {
+        key: 'tarea',
+        label: 'Tarea/Responsabilidad',
+        options: [
+          { value: '', text: 'Seleccionar…' },
+          { value: '4', text: '4 – Completa y a tiempo' },
+          { value: '2', text: '2 – Incompleta pero en fecha' },
+          { value: '1', text: '1 – Tarde' },
+          { value: '0', text: '0 – No entregó' }
+        ]
       }
     ];
 
-    // Genera el contenido de la tabla para cada sesión
-    function generateSessions() {
+    // Genera la estructura de tarjetas de sesiones con la tabla de evaluación
+    function renderSessions() {
       const container = document.getElementById('sessions-container');
       sessions.forEach(session => {
-        // Crear contenedor details
-        const details = document.createElement('details');
-        details.className = 'session';
-        // Crear summary
-        const summary = document.createElement('summary');
-        summary.textContent = `Sesión ${session.id}: ${session.title}`;
-        details.appendChild(summary);
-        // Crear div contenedor de detalles
-        const div = document.createElement('div');
-        div.className = 'session-details';
-        // Texto descriptivo
-        div.innerHTML += `<p><strong>Premisa:</strong> ${session.premise}</p>`;
-        div.innerHTML += `<p><strong>Objetivo:</strong> ${session.objective}</p>`;
-        div.innerHTML += `<p><strong>Reflejo:</strong> ${session.reflection}</p>`;
-        div.innerHTML += `<p><strong>Enfoque:</strong> ${session.focus}</p>`;
-        div.innerHTML += `<p><strong>Base bíblica:</strong> ${session.scripture}</p>`;
-        div.innerHTML += `<p><strong>Tareas propuestas:</strong> ${session.tasks}</p>`;
-        // Crear tabla de evaluación
+        const card = document.createElement('div');
+        card.className = 'session-card';
+        // Cabecera
+        const header = document.createElement('div');
+        header.className = 'session-header';
+        header.innerHTML = `Sesión ${session.id}: ${session.title} <span class="toggle-icon">▶</span>`;
+        header.addEventListener('click', () => {
+          card.classList.toggle('open');
+        });
+        card.appendChild(header);
+        // Cuerpo
+        const body = document.createElement('div');
+        body.className = 'session-body';
+        body.innerHTML += `<p><strong>Premisa:</strong> ${session.premise}</p>`;
+        body.innerHTML += `<p><strong>Objetivo:</strong> ${session.objective}</p>`;
+        body.innerHTML += `<p><strong>Reflejo:</strong> ${session.reflection}</p>`;
+        body.innerHTML += `<p><strong>Enfoque:</strong> ${session.focus}</p>`;
+        body.innerHTML += `<p><strong>Base bíblica:</strong> ${session.scripture}</p>`;
+        body.innerHTML += `<p><strong>Tareas propuestas:</strong> ${session.tasks}</p>`;
+        // Tabla
         const table = document.createElement('table');
         table.className = 'evaluation-table';
         // Encabezado
         const thead = document.createElement('thead');
-        let headerRow = '<tr><th>Participante</th>';
+        let headerRow = '<tr><th>Alumno</th>';
         categories.forEach(cat => {
           headerRow += `<th>${cat.label}</th>`;
         });
@@ -324,34 +428,33 @@
         table.appendChild(thead);
         // Cuerpo de la tabla
         const tbody = document.createElement('tbody');
-        participants.forEach(part => {
+        students.forEach(st => {
           const tr = document.createElement('tr');
-          // Columna de participante
-          const tdName = document.createElement('td');
-          tdName.textContent = part;
-          tr.appendChild(tdName);
-          // Para cada categoría crear select
+          // Columna de alumno
+          const nameTd = document.createElement('td');
+          nameTd.textContent = `Alumno ${st}`;
+          tr.appendChild(nameTd);
+          // Para cada categoría añadir un select
           categories.forEach(cat => {
             const td = document.createElement('td');
             const select = document.createElement('select');
             cat.options.forEach(opt => {
               const option = document.createElement('option');
-              option.value = opt;
-              option.textContent = opt === '' ? 'Seleccionar…' : opt;
+              option.value = opt.value;
+              option.textContent = opt.text;
               select.appendChild(option);
             });
-            // Establecer el ID para identificar la celda en el almacenamiento local
             select.dataset.sessionId = session.id;
-            select.dataset.participant = part;
+            select.dataset.student = st;
             select.dataset.category = cat.key;
-            // Asignar valor guardado si existe
-            const saved = localStorage.getItem(`s${session.id}_p${part}_${cat.key}`);
+            // recuperar del almacenamiento
+            const saved = localStorage.getItem(`s${session.id}_p${st}_${cat.key}`);
             if (saved !== null) {
               select.value = saved;
             }
-            // Guardar en localStorage al cambiar
             select.addEventListener('change', function() {
-              localStorage.setItem(`s${this.dataset.sessionId}_p${this.dataset.participant}_${this.dataset.category}`, this.value);
+              localStorage.setItem(`s${this.dataset.sessionId}_p${this.dataset.student}_${this.dataset.category}`, this.value);
+              updateStatsSection();
             });
             td.appendChild(select);
             tr.appendChild(td);
@@ -362,40 +465,32 @@
           input.type = 'text';
           input.placeholder = 'Escribe tus notas aquí…';
           input.dataset.sessionId = session.id;
-          input.dataset.participant = part;
+          input.dataset.student = st;
           input.dataset.category = 'observaciones';
-          // cargar texto si existe
-          const savedObs = localStorage.getItem(`s${session.id}_p${part}_observaciones`);
+          const savedObs = localStorage.getItem(`s${session.id}_p${st}_observaciones`);
           if (savedObs !== null) {
             input.value = savedObs;
           }
           input.addEventListener('input', function() {
-            localStorage.setItem(`s${this.dataset.sessionId}_p${this.dataset.participant}_observaciones`, this.value);
+            localStorage.setItem(`s${this.dataset.sessionId}_p${this.dataset.student}_observaciones`, this.value);
           });
           tdObs.appendChild(input);
           tr.appendChild(tdObs);
           tbody.appendChild(tr);
         });
         table.appendChild(tbody);
-        // Añadir tabla a div
-        div.appendChild(table);
-        // Añadir div al details
-        details.appendChild(div);
-        // Añadir details al contenedor
-        container.appendChild(details);
+        body.appendChild(table);
+        card.appendChild(body);
+        container.appendChild(card);
       });
     }
 
-    /**
-     * Exporta los datos almacenados en localStorage relativos a esta evaluación
-     * a un archivo JSON descargable. Solo se incluyen las claves que empiezan
-     * con "s" (sesión).
-     */
+    // Exporta los datos de localStorage (solo claves que empiezan con 's')
     function exportData() {
       const data = {};
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('s')) {
+        if (key.startsWith('s')) {
           data[key] = localStorage.getItem(key);
         }
       }
@@ -403,71 +498,176 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'datos_evaluacion_discipulado.json';
-      document.body.appendChild(a);
+      a.download = 'evaluacion_discipulado.json';
       a.click();
-      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
 
-    /**
-     * Importa datos desde un archivo JSON seleccionado por el usuario.
-     * Los datos se guardan en localStorage y luego recarga los select
-     * e inputs correspondientes. Se espera un objeto { clave: valor }.
-     */
-    function importData(event) {
-      const file = event.target.files[0];
+    // Importa datos desde un archivo JSON y actualiza la interfaz
+    function importData(evt) {
+      const file = evt.target.files[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = function(e) {
         try {
-          const contents = JSON.parse(e.target.result);
-          Object.keys(contents).forEach(key => {
-            if (key && key.startsWith('s')) {
-              localStorage.setItem(key, contents[key]);
-            }
+          const data = JSON.parse(e.target.result);
+          Object.keys(data).forEach(key => {
+            localStorage.setItem(key, data[key]);
           });
-          refreshFormData();
+          // Recargar selects con datos importados
+          refreshSelects();
+          updateStatsSection();
           alert('Datos importados correctamente.');
         } catch (err) {
-          alert('Error al importar datos: archivo no válido.');
+          alert('Error al importar datos. Asegúrate de que sea un archivo JSON válido.');
         }
       };
       reader.readAsText(file);
-      // limpiar el input para permitir reimportar el mismo archivo
-      event.target.value = '';
     }
 
-    /**
-     * Actualiza los valores de los formularios a partir de lo guardado en localStorage.
-     */
-    function refreshFormData() {
-      document.querySelectorAll('select').forEach(select => {
-        const key = `s${select.dataset.sessionId}_p${select.dataset.participant}_${select.dataset.category}`;
-        const val = localStorage.getItem(key);
-        if (val !== null) {
-          select.value = val;
-        } else {
-          select.value = '';
-        }
-      });
-      document.querySelectorAll('input[type="text"]').forEach(input => {
-        const key = `s${input.dataset.sessionId}_p${input.dataset.participant}_observaciones`;
-        const val = localStorage.getItem(key);
-        if (val !== null) {
-          input.value = val;
-        } else {
-          input.value = '';
+    // Recarga todos los selects después de importación
+    function refreshSelects() {
+      const selects = document.querySelectorAll('table.evaluation-table select');
+      selects.forEach(sel => {
+        const saved = localStorage.getItem(`s${sel.dataset.sessionId}_p${sel.dataset.student}_${sel.dataset.category}`);
+        if (saved !== null) {
+          sel.value = saved;
         }
       });
     }
 
-    // Inicializar página
-    document.addEventListener('DOMContentLoaded', () => {
-      generateSessions();
+    // Construye la lista de alumnos para las estadísticas
+    function populateStudentSelect() {
+      const sel = document.getElementById('studentSelect');
+      // Agregar opción vacía
+      const emptyOption = document.createElement('option');
+      emptyOption.value = '';
+      emptyOption.textContent = 'Seleccionar alumno…';
+      sel.appendChild(emptyOption);
+      students.forEach(st => {
+        const opt = document.createElement('option');
+        opt.value = st;
+        opt.textContent = `Alumno ${st}`;
+        sel.appendChild(opt);
+      });
+      sel.addEventListener('change', updateStatsSection);
+    }
+
+    // Obtiene los datos por alumno y calcula estadísticas
+    function calculateStudentStats(studentId) {
+      const stats = {
+        totals: { asistencia: 0, puntualidad: 0, participacion: 0, compromiso: 0, tarea: 0 },
+        counts: { asistencia0: 0, asistencia1: 0, puntualidadLate: 0 },
+        sessionsCompleted: 0
+      };
+      sessions.forEach(sess => {
+        let sessionHasData = false;
+        categories.forEach(cat => {
+          const valueStr = localStorage.getItem(`s${sess.id}_p${studentId}_${cat.key}`);
+          const value = valueStr ? parseInt(valueStr) : 0;
+          if (valueStr && valueStr !== '') {
+            sessionHasData = true;
+          }
+          stats.totals[cat.key] += value;
+          // Conteo de faltas y llegadas tarde
+          if (cat.key === 'asistencia') {
+            if (value === 0) stats.counts.asistencia0++;
+            if (value === 1) stats.counts.asistencia1++;
+          }
+          if (cat.key === 'puntualidad' && value < 4) {
+            // cualquier valor menor a 4 se considera llegada tarde/no llegada
+            stats.counts.puntualidadLate++;
+          }
+        });
+        if (sessionHasData) stats.sessionsCompleted++;
+      });
+      return stats;
+    }
+
+    // Actualiza la sección de estadísticas y el gráfico
+    function updateStatsSection() {
+      const studentId = document.getElementById('studentSelect').value;
+      const summaryEl = document.getElementById('stats-summary');
+      if (!studentId) {
+        summaryEl.textContent = 'Selecciona un alumno para ver sus estadísticas.';
+        if (window.studentChartObj) window.studentChartObj.destroy();
+        return;
+      }
+      const stats = calculateStudentStats(studentId);
+      // Calcular promedios
+      const averages = {};
+      const totalPossiblePerSession = 20;
+      const totalPossible = sessions.length * totalPossiblePerSession;
+      let totalPoints = 0;
+      categories.forEach(cat => {
+        averages[cat.key] = stats.totals[cat.key] / sessions.length;
+        totalPoints += stats.totals[cat.key];
+      });
+      const percent = ((totalPoints / totalPossible) * 100).toFixed(1);
+      // Mostrar resumen textual
+      summaryEl.innerHTML =
+        `<p><strong>Promedio por indicador (sobre 4):</strong></p>` +
+        `<ul>` +
+        `<li>Asistencia: ${averages.asistencia.toFixed(2)}</li>` +
+        `<li>Puntualidad: ${averages.puntualidad.toFixed(2)}</li>` +
+        `<li>Participación: ${averages.participacion.toFixed(2)}</li>` +
+        `<li>Compromiso: ${averages.compromiso.toFixed(2)}</li>` +
+        `<li>Tarea/Responsabilidad: ${averages.tarea.toFixed(2)}</li>` +
+        `</ul>` +
+        `<p><strong>Totales:</strong> ${totalPoints} de ${totalPossible} puntos posibles (${percent}%).</p>` +
+        `<p><strong>Faltas (no asistió):</strong> ${stats.counts.asistencia0}</p>` +
+        `<p><strong>Ausencias parciales (medio presente):</strong> ${stats.counts.asistencia1}</p>` +
+        `<p><strong>Llegadas tarde/no llegó:</strong> ${stats.counts.puntualidadLate}</p>`;
+      // Preparar datos para Chart.js
+      const labels = categories.map(c => c.label);
+      const dataValues = categories.map(c => averages[c.key]);
+      const ctx = document.getElementById('studentChart').getContext('2d');
+      if (window.studentChartObj) window.studentChartObj.destroy();
+      window.studentChartObj = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: `Promedio de Alumno ${studentId}`,
+            data: dataValues,
+            backgroundColor: '#3498db',
+            borderColor: '#2980b9',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 4,
+              ticks: { stepSize: 1 },
+              title: { display: true, text: 'Promedio (0–4)' }
+            },
+            x: { title: { display: true, text: 'Indicadores' } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return ` ${context.parsed.y.toFixed(2)}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Inicializar la página: generar sesiones, poblar select y enlazar botones
+    function init() {
+      renderSessions();
+      populateStudentSelect();
       document.getElementById('exportBtn').addEventListener('click', exportData);
       document.getElementById('importFile').addEventListener('change', importData);
-    });
+      updateStatsSection();
+    }
+    window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
 </html>
