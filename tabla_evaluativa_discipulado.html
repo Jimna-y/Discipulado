@@ -263,6 +263,10 @@
     </div>
     <canvas id="studentChart" style="max-width:100%;max-height:350px;"></canvas>
     <div id="stats-summary"></div>
+
+    <!-- Gráfico de desempeño global -->
+    <h3 id="global-chart-title" style="margin-top:2rem;color: var(--eden); font-weight:600; text-align:center;">Desempeño global de alumnos</h3>
+    <canvas id="globalChart" style="max-width:100%;max-height:350px;"></canvas>
   </div>
 
   <!-- Dependencia para gráficos -->
@@ -728,6 +732,69 @@
           }
         }
       });
+
+      // Después de actualizar el gráfico individual, actualizar el gráfico global
+      updateGlobalChart();
+    }
+
+    // Genera el gráfico global con el total de puntos acumulados por alumno
+    function updateGlobalChart() {
+      const labels = students.map(i => `Alumno ${i}`);
+      // Calcular total de puntos por alumno
+      const dataValues = students.map(studentId => {
+        let total = 0;
+        sessions.forEach(sess => {
+          categories.forEach(cat => {
+            const valueStr = localStorage.getItem(`s${sess.id}_p${studentId}_${cat.key}`);
+            const val = valueStr && valueStr !== '' ? parseInt(valueStr) : 0;
+            total += val;
+          });
+        });
+        return total;
+      });
+      const ctxGlobal = document.getElementById('globalChart').getContext('2d');
+      // Destruir gráfico previo si existe
+      if (window.globalChartObj) window.globalChartObj.destroy();
+      // Generar colores para cada barra repitiendo la paleta
+      const baseColors = ['#0799b6','#4a6eb0','#114c5f','#9cd2d3','#f2e0cf'];
+      const barColors = dataValues.map((_, idx) => baseColors[idx % baseColors.length]);
+      window.globalChartObj = new Chart(ctxGlobal, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Total de puntos',
+            data: dataValues,
+            backgroundColor: barColors,
+            borderColor: barColors,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              // El máximo dependerá de 240 puntos posibles
+              max: sessions.length * 20,
+              title: { display: true, text: 'Puntos acumulados' }
+            },
+            x: {
+              title: { display: true, text: 'Alumnos' }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const val = context.parsed.y;
+                  return ` ${val} pts`;
+                }
+              }
+            }
+          }
+        }
+      });
     }
 
     // Inicializar la página: generar sesiones, poblar select y enlazar botones
@@ -737,6 +804,8 @@
       document.getElementById('exportBtn').addEventListener('click', exportData);
       document.getElementById('importFile').addEventListener('change', importData);
       updateStatsSection();
+      // Cargar gráfico global inicialmente
+      updateGlobalChart();
     }
     window.addEventListener('DOMContentLoaded', init);
   </script>
