@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tabla Evaluativa – Discipulado de Alabanza y Adoración</title>
+  <style>
+    /* General layout */
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f7f9;
+      margin: 0;
+      padding: 1rem;
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 0.5rem;
+    }
+
+    p.instructions {
+      text-align: center;
+      max-width: 800px;
+      margin: 0 auto 2rem auto;
+      font-size: 0.95rem;
+      color: #555;
+    }
+
+    .button-bar {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .button-bar button {
+      padding: 0.5rem 1rem;
+      background-color: #3498db;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background-color 0.2s ease-in-out;
+    }
+
+    .button-bar button:hover {
+      background-color: #2980b9;
+    }
+
+    details.session {
+      background: #ffffff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    details.session summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 0.75rem 1rem;
+      font-weight: bold;
+      background-color: #ecf8ff;
+      border-radius: 6px 6px 0 0;
+      position: relative;
+    }
+
+    details.session summary::marker {
+      display: none;
+    }
+
+    details.session[open] summary {
+      border-bottom: 1px solid #ddd;
+    }
+
+    .session-details {
+      padding: 0.75rem 1rem 1rem 1rem;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    .session-details p {
+      margin: 0.3rem 0;
+    }
+
+    .session-details strong {
+      color: #2c3e50;
+    }
+
+    table.evaluation-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+
+    table.evaluation-table th, table.evaluation-table td {
+      border: 1px solid #ddd;
+      padding: 0.4rem;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+
+    table.evaluation-table th {
+      background-color: #f0f4f6;
+      font-weight: bold;
+    }
+
+    table.evaluation-table select, table.evaluation-table input[type="text"] {
+      width: 100%;
+      padding: 0.25rem;
+      font-size: 0.85rem;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      box-sizing: border-box;
+    }
+
+    table.evaluation-table input[type="text"] {
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tabla Evaluativa – Discipulado de Alabanza y Adoración</h1>
+  <p class="instructions">
+    Utiliza esta tabla para evaluar cada sesión del discipulado. Haz clic en la cabecera de cada sesión para desplegar u ocultar su contenido. Los cambios se guardan automáticamente en tu navegador. Puedes exportar tus datos a un archivo JSON o importarlos desde un archivo previamente guardado.
+  </p>
+  <div class="button-bar">
+    <button id="exportBtn">Exportar Datos</button>
+    <label for="importFile" style="position: relative; overflow: hidden;">
+      <input type="file" id="importFile" accept="application/json" style="position:absolute;left:0;top:0;opacity:0;width:100%;height:100%;cursor:pointer;">
+      <span style="display:inline-block;padding:0.5rem 1rem;">Importar Datos</span>
+    </label>
+  </div>
+  <div id="sessions-container"></div>
+
+  <script>
+    /* Datos de las sesiones extraídos del documento de discipulado.
+       Cada sesión contiene información esencial para orientar la evaluación y tareas asociadas. */
+    const sessions = [
+      {
+        id: 1,
+        title: "¿Qué es la adoración verdadera?",
+        premise: "La adoración no es solo un acto musical, sino una vida entregada a Dios en espíritu y verdad.",
+        objective: "Entender que la adoración verdadera es un estilo de vida y no un momento aislado.",
+        reflection: "Comprometerse a vivir una vida de adoración más allá de la plataforma, cultivando la relación con Dios en lo secreto.",
+        focus: "Más allá de la música: intimidad, obediencia y entrega en todas las áreas de la vida.",
+        scripture: "Juan 4:23–24; Génesis 22:5",
+        tasks: "Memorizar Juan&nbsp;4:23–24 y Génesis&nbsp;22:5; reflexionar acerca de cómo tu vida cotidiana expresa adoración."
+      },
+      {
+        id: 2,
+        title: "Identidad del adorador",
+        premise: "Un ministerio de alabanza genuino depende de la vida personal con Dios.",
+        objective: "Fomentar la importancia de un altar personal y una vida devocional consistente.",
+        reflection: "Estar comprometidos a orar y leer la Biblia regularmente, buscando una conexión profunda con Dios.",
+        focus: "Conocer la identidad como hijo de Dios antes de servir para evitar buscar aprobación a través del ministerio.",
+        scripture: "Salmo 139; Efesios 1:4–5",
+        tasks: "Establecer un altar personal de oración y lectura bíblica; memorizar Salmo&nbsp;139 y Efesios&nbsp;1:4–5."
+      },
+      {
+        id: 3,
+        title: "El carácter del ministro",
+        premise: "El ministerio debe fluir desde una identidad firmemente establecida en Cristo.",
+        objective: "Comprender que el valor no depende del servicio ministerial, sino de la relación con Dios.",
+        reflection: "Ministrar desde seguridad en la identidad como hijos de Dios, evitando la comparación y el orgullo.",
+        focus: "Puntualidad, humildad, respeto, integridad y sujeción: el carácter sostiene lo que el talento no puede.",
+        scripture: "1 Timoteo 4:12",
+        tasks: "Trabajar en el carácter: ser puntual, humilde, respetuoso e íntegro; memorizar 1&nbsp;Timoteo&nbsp;4:12."
+      },
+      {
+        id: 4,
+        title: "El altar personal",
+        premise: "La técnica es importante, pero el carácter es aún más esencial para un ministerio genuino.",
+        objective: "Desarrollar un carácter que refleje el corazón de Cristo, además de habilidades musicales.",
+        reflection: "Priorizar el carácter: buscar la humildad, la integridad y servir con un corazón puro.",
+        focus: "El adorador no puede dar lo que no tiene: cultivar una vida secreta de oración, adoración y Palabra.",
+        scripture: "Mateo 6:6",
+        tasks: "Desarrollar una vida secreta de oración y adoración; memorizar Mateo&nbsp;6:6."
+      },
+      {
+        id: 5,
+        title: "La unción en la adoración",
+        premise: "La unidad en el equipo de alabanza es fundamental para que el Espíritu se mueva libremente.",
+        objective: "Promover compañerismo, apoyo mutuo y unidad entre los miembros del equipo.",
+        reflection: "Trabajar en armonía, resolver conflictos de manera bíblica y apoyarse mutuamente en oración y servicio.",
+        focus: "Diferenciar entre cantar bien y ministrar bajo la unción; cultivar sensibilidad al Espíritu Santo.",
+        scripture: "1 Samuel 16:23",
+        tasks: "Promover la unidad resolviendo conflictos con amor; practicar la sensibilidad al Espíritu; memorizar 1&nbsp;Samuel&nbsp;16:23."
+      },
+      {
+        id: 6,
+        title: "La ética del ministro de alabanza",
+        premise: "La puntualidad y el compromiso son indicadores del nivel de honor y respeto por el ministerio.",
+        objective: "Enseñar la importancia de ser responsables y puntuales en todos los aspectos del ministerio.",
+        reflection: "Asumir una actitud profesional y comprometida, cumpliendo las responsabilidades con excelencia.",
+        focus: "Cuidar las relaciones dentro y fuera del equipo; actuar con honra ante desacuerdos; respetar líderes y hermanos.",
+        scripture: "Romanos 12:10; Hebreos 13:17",
+        tasks: "Ser puntual y responsable en ensayos y servicios; honrar y obedecer a los líderes; memorizar Romanos&nbsp;12:10 y Hebreos&nbsp;13:17."
+      },
+      {
+        id: 7,
+        title: "El poder espiritual de la alabanza",
+        premise: "La excelencia en la música honra a Dios y prepara el ambiente para Su presencia.",
+        objective: "Desarrollar habilidades técnicas en la música para servir con excelencia y dedicación.",
+        reflection: "Practicar regularmente y esforzarse por mejorar para ofrecer lo mejor a Dios.",
+        focus: "La adoración como arma espiritual en batalla; estudiar casos bíblicos donde Dios operó a través de cantores.",
+        scripture: "2 Crónicas 20:21–22; Hechos 16:25–26",
+        tasks: "Practicar habilidades musicales; estudiar las historias de 2&nbsp;Crónicas&nbsp;20:21–22 y Hechos&nbsp;16:25–26; reflexionar sobre la adoración como arma espiritual."
+      },
+      {
+        id: 8,
+        title: "El fluir profético en la adoración",
+        premise: "Conocer las estructuras musicales y el repertorio es esencial para ministrar de manera fluida y efectiva.",
+        objective: "Equipar a los adoradores con los conocimientos musicales básicos para desempeñarse adecuadamente.",
+        reflection: "Estar familiarizados con el repertorio y la estructura musical de cada canción para un servicio fluido y ordenado.",
+        focus: "Dejar espacio para que Dios hable; identificar el fluir del Espíritu sin caer en desorden.",
+        scripture: "Romanos 8:14; 1 Corintios 14:26–33",
+        tasks: "Estudiar las estructuras y repertorio; permitir espacios de adoración espontánea; memorizar Romanos&nbsp;8:14 y 1&nbsp;Corintios&nbsp;14:26–33."
+      },
+      {
+        id: 9,
+        title: "Excelencia musical y espiritual",
+        premise: "El buen uso de los equipos técnicos mejora la calidad del servicio y evita distracciones.",
+        objective: "Capacitar en el manejo adecuado de los equipos técnicos durante el servicio.",
+        reflection: "Ser responsables del manejo de los equipos, asegurándose de que todo funcione correctamente antes y durante el servicio.",
+        focus: "Ensayar con propósito, preparar técnica y espiritualmente: la excelencia honra a Dios.",
+        scripture: "1 Crónicas 25:7; 2 Timoteo 2:15",
+        tasks: "Aprender el manejo de equipos técnicos; practicar con propósito; memorizar 1&nbsp;Crónicas&nbsp;25:7 y 2&nbsp;Timoteo&nbsp;2:15."
+      },
+      {
+        id: 10,
+        title: "Fluir con el Espíritu: sensibilidad y discernimiento",
+        premise: "La verdadera adoración fluye desde la sensibilidad y el discernimiento del Espíritu Santo.",
+        objective: "Fomentar la capacidad de los adoradores para discernir el movimiento del Espíritu y ajustarse a Él.",
+        reflection: "Estar atentos a la dirección del Espíritu Santo, permitiendo que Él guíe la adoración sin depender de guiones.",
+        focus: "Construir relaciones sanas, evitar competencia, fomentar compañerismo y colaboración.",
+        scripture: "Salmo 133:1",
+        tasks: "Practicar la sensibilidad espiritual en los servicios; cultivar relaciones sanas dentro del equipo; memorizar Salmo&nbsp;133:1."
+      },
+      {
+        id: 11,
+        title: "Sensibilidad al ambiente espiritual",
+        premise: "La adoración profética permite que la voz de Dios se exprese a través de Su pueblo.",
+        objective: "Introducir a los adoradores en el fluir profético, enseñándoles a cantar lo que el Espíritu está diciendo.",
+        reflection: "Estar abiertos a cantar espontáneamente y ser sensibles a lo que el Espíritu está revelando en el momento.",
+        focus: "Discernir qué está haciendo el Espíritu Santo en un servicio y cómo acompañar desde la adoración.",
+        scripture: "Juan 5:19",
+        tasks: "Ejercitar la adoración profética; cantar espontáneamente al Espíritu; memorizar Juan&nbsp;5:19."
+      },
+      {
+        id: 12,
+        title: "Activación, compromiso y envío",
+        premise: "La intercesión prepara el ambiente espiritual y permite que la alabanza fluya con libertad.",
+        objective: "Resaltar la importancia de la oración intercesora para preparar el terreno antes de cada servicio.",
+        reflection: "Comprometerse a orar antes y durante el servicio, pidiendo que el Espíritu Santo se mueva y toque los corazones.",
+        focus: "Renovar el compromiso, orar unos por otros, establecer metas espirituales y técnicas; cerrar con acto profético.",
+        scripture: "Filipenses 1:6; Isaías 6:8",
+        tasks: "Formar círculos de intercesión antes de cada servicio; establecer metas espirituales y técnicas; memorizar Filipenses&nbsp;1:6 e Isaías&nbsp;6:8."
+      }
+    ];
+
+    // Crea un arreglo de participantes numerados del 1 al 12
+    const participants = Array.from({ length: 12 }, (_, i) => i + 1);
+
+    // Categorías de evaluación y sus opciones
+    const categories = [
+      {
+        key: 'asistencia',
+        label: 'Asistencia',
+        options: ['', 'Sí', 'No']
+      },
+      {
+        key: 'participacion',
+        label: 'Participación',
+        options: ['', 'Excelente', 'Buena', 'Regular', 'Baja']
+      },
+      {
+        key: 'comprension',
+        label: 'Comprensión',
+        options: ['', 'Excelente', 'Buena', 'Regular', 'Baja']
+      },
+      {
+        key: 'compromiso',
+        label: 'Compromiso',
+        options: ['', 'Comprometido', 'Poco comprometido', 'No comprometido']
+      }
+    ];
+
+    // Genera el contenido de la tabla para cada sesión
+    function generateSessions() {
+      const container = document.getElementById('sessions-container');
+      sessions.forEach(session => {
+        // Crear contenedor details
+        const details = document.createElement('details');
+        details.className = 'session';
+        // Crear summary
+        const summary = document.createElement('summary');
+        summary.textContent = `Sesión ${session.id}: ${session.title}`;
+        details.appendChild(summary);
+        // Crear div contenedor de detalles
+        const div = document.createElement('div');
+        div.className = 'session-details';
+        // Texto descriptivo
+        div.innerHTML += `<p><strong>Premisa:</strong> ${session.premise}</p>`;
+        div.innerHTML += `<p><strong>Objetivo:</strong> ${session.objective}</p>`;
+        div.innerHTML += `<p><strong>Reflejo:</strong> ${session.reflection}</p>`;
+        div.innerHTML += `<p><strong>Enfoque:</strong> ${session.focus}</p>`;
+        div.innerHTML += `<p><strong>Base bíblica:</strong> ${session.scripture}</p>`;
+        div.innerHTML += `<p><strong>Tareas propuestas:</strong> ${session.tasks}</p>`;
+        // Crear tabla de evaluación
+        const table = document.createElement('table');
+        table.className = 'evaluation-table';
+        // Encabezado
+        const thead = document.createElement('thead');
+        let headerRow = '<tr><th>Participante</th>';
+        categories.forEach(cat => {
+          headerRow += `<th>${cat.label}</th>`;
+        });
+        headerRow += '<th>Observaciones</th></tr>';
+        thead.innerHTML = headerRow;
+        table.appendChild(thead);
+        // Cuerpo de la tabla
+        const tbody = document.createElement('tbody');
+        participants.forEach(part => {
+          const tr = document.createElement('tr');
+          // Columna de participante
+          const tdName = document.createElement('td');
+          tdName.textContent = part;
+          tr.appendChild(tdName);
+          // Para cada categoría crear select
+          categories.forEach(cat => {
+            const td = document.createElement('td');
+            const select = document.createElement('select');
+            cat.options.forEach(opt => {
+              const option = document.createElement('option');
+              option.value = opt;
+              option.textContent = opt === '' ? 'Seleccionar…' : opt;
+              select.appendChild(option);
+            });
+            // Establecer el ID para identificar la celda en el almacenamiento local
+            select.dataset.sessionId = session.id;
+            select.dataset.participant = part;
+            select.dataset.category = cat.key;
+            // Asignar valor guardado si existe
+            const saved = localStorage.getItem(`s${session.id}_p${part}_${cat.key}`);
+            if (saved !== null) {
+              select.value = saved;
+            }
+            // Guardar en localStorage al cambiar
+            select.addEventListener('change', function() {
+              localStorage.setItem(`s${this.dataset.sessionId}_p${this.dataset.participant}_${this.dataset.category}`, this.value);
+            });
+            td.appendChild(select);
+            tr.appendChild(td);
+          });
+          // Observaciones
+          const tdObs = document.createElement('td');
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.placeholder = 'Escribe tus notas aquí…';
+          input.dataset.sessionId = session.id;
+          input.dataset.participant = part;
+          input.dataset.category = 'observaciones';
+          // cargar texto si existe
+          const savedObs = localStorage.getItem(`s${session.id}_p${part}_observaciones`);
+          if (savedObs !== null) {
+            input.value = savedObs;
+          }
+          input.addEventListener('input', function() {
+            localStorage.setItem(`s${this.dataset.sessionId}_p${this.dataset.participant}_observaciones`, this.value);
+          });
+          tdObs.appendChild(input);
+          tr.appendChild(tdObs);
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        // Añadir tabla a div
+        div.appendChild(table);
+        // Añadir div al details
+        details.appendChild(div);
+        // Añadir details al contenedor
+        container.appendChild(details);
+      });
+    }
+
+    /**
+     * Exporta los datos almacenados en localStorage relativos a esta evaluación
+     * a un archivo JSON descargable. Solo se incluyen las claves que empiezan
+     * con "s" (sesión).
+     */
+    function exportData() {
+      const data = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('s')) {
+          data[key] = localStorage.getItem(key);
+        }
+      }
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'datos_evaluacion_discipulado.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    /**
+     * Importa datos desde un archivo JSON seleccionado por el usuario.
+     * Los datos se guardan en localStorage y luego recarga los select
+     * e inputs correspondientes. Se espera un objeto { clave: valor }.
+     */
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const contents = JSON.parse(e.target.result);
+          Object.keys(contents).forEach(key => {
+            if (key && key.startsWith('s')) {
+              localStorage.setItem(key, contents[key]);
+            }
+          });
+          refreshFormData();
+          alert('Datos importados correctamente.');
+        } catch (err) {
+          alert('Error al importar datos: archivo no válido.');
+        }
+      };
+      reader.readAsText(file);
+      // limpiar el input para permitir reimportar el mismo archivo
+      event.target.value = '';
+    }
+
+    /**
+     * Actualiza los valores de los formularios a partir de lo guardado en localStorage.
+     */
+    function refreshFormData() {
+      document.querySelectorAll('select').forEach(select => {
+        const key = `s${select.dataset.sessionId}_p${select.dataset.participant}_${select.dataset.category}`;
+        const val = localStorage.getItem(key);
+        if (val !== null) {
+          select.value = val;
+        } else {
+          select.value = '';
+        }
+      });
+      document.querySelectorAll('input[type="text"]').forEach(input => {
+        const key = `s${input.dataset.sessionId}_p${input.dataset.participant}_observaciones`;
+        const val = localStorage.getItem(key);
+        if (val !== null) {
+          input.value = val;
+        } else {
+          input.value = '';
+        }
+      });
+    }
+
+    // Inicializar página
+    document.addEventListener('DOMContentLoaded', () => {
+      generateSessions();
+      document.getElementById('exportBtn').addEventListener('click', exportData);
+      document.getElementById('importFile').addEventListener('change', importData);
+    });
+  </script>
+</body>
+</html>
